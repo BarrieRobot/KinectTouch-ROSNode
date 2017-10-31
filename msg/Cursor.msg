@@ -1,2 +1,2 @@
-float32 cursorX
-float32 cursorY
+Header header
+point[] cursors

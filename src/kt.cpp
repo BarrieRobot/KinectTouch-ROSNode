@@ -7,6 +7,7 @@
 // %EndTag(ROS_HEADER)%
 // %Tag(MSG_HEADER)%
 #include "std_msgs/String.h"
+#include "kt/Cursor.h"
 // %EndTag(MSG_HEADER)%
 
 #include <sstream>
@@ -34,10 +35,10 @@ using namespace xn;
 
 
 // TUIO
-
+/*
 #include "TuioServer.h"
 using namespace TUIO;
-
+*/
 // TODO smoothing using kalman filter
 
 //---------------------------------------------------------------------------
@@ -103,10 +104,10 @@ int main(int argc, char **argv)
 	const Scalar debugColor1(255,0,0);
 	const Scalar debugColor2(255,255,255);
 
-	int xMin = 110;
-	int xMax = 560;
-	int yMin = 120;
-	int yMax = 320;
+		int xMin = 110;
+		int xMax = 540;
+		int yMin = 260;
+		int yMax = 480;
 
 	Mat1s depth(480, 640); // 16 bit depth (in millimeters)
 	Mat1b depth8(480, 640); // 8 bit depth
@@ -123,20 +124,20 @@ int main(int argc, char **argv)
 	vector<Mat1s> buffer(nBackgroundTrain);
 
 // %Tag(INIT)%
-  ros::init(argc, argv, "kinecttouch");
+  ros::init(argc, argv, "kt");
 // %EndTag(INIT)%
 
 	initOpenNI("/home/jonathan/catkin_ws/src/kinect_touch/src/niConfig.xml");
 
 // TUIO server object
 
-	TuioServer* tuio;
+	/*TuioServer* tuio;
 	if (localClientMode) {
 		tuio = new TUIO::TuioServer();
 	} else {
-		tuio = new TuioServer("192.168.0.2",3333,false);
+		tuio = new TuioServer("127.0.0.1",3333,false);
 	}
-	TuioTime time;
+	TuioTime time;*/
 
 
 	// create some sliders
@@ -176,7 +177,7 @@ int main(int argc, char **argv)
    * buffer up before throwing some away.
    */
 // %Tag(PUBLISHER)%
-  ros::Publisher chatter_pub = n.advertise<std_msgs::String>("chatter", 1000);
+  ros::Publisher chatter_pub = n.advertise<kt::Cursor>("chatter", 1000);
 // %EndTag(PUBLISHER)%
 
 // %Tag(LOOP_RATE)%
@@ -195,32 +196,6 @@ int main(int argc, char **argv)
     /**
      * This is a message object. You stuff it with data, and then publish it.
      */
-// %Tag(FILL_MESSAGE)%
-    std_msgs::String msg;
-
-    std::stringstream ss;
-    ss << "hello world " << count;
-    msg.data = ss.str();
-// %EndTag(FILL_MESSAGE)%
-
-// %Tag(ROSCONSOLE)%
-    ROS_INFO("%s", msg.data.c_str());
-// %EndTag(ROSCONSOLE)%
-
-    /**
-     * The publish() function is how you send messages. The parameter
-     * is the message object. The type of this object must agree with the type
-     * given as a template parameter to the advertise<>() call, as was done
-     * in the constructor above.
-     */
-// %Tag(PUBLISH)%
-    chatter_pub.publish(msg);
-// %EndTag(PUBLISH)%
-
-// %Tag(SPINONCE)%
-    ros::spinOnce();
-// %EndTag(SPINONCE)%
-
 
 	// read available data
 		xnContext.WaitAndUpdateAll();
@@ -228,8 +203,6 @@ int main(int argc, char **argv)
 		// update 16 bit depth matrix
 		depth.data = (uchar*) xnDepthGenerator.GetDepthMap();
 		//xnImgeGenertor.GetGrayscale8ImageMap()
-
-
 
 		// update rgb image
 		//rgb.data = (uchar*) xnImgeGenertor.GetRGB24ImageMap(); // segmentation fault here
@@ -261,26 +234,35 @@ int main(int argc, char **argv)
 
 		// send TUIO cursors
 
-		time = TuioTime::getSessionTime();
-		tuio->initFrame(time);
+		// time = TuioTime::getSessionTime();
+		// tuio->initFrame(time);
 
+    kt::Cursor list_msg;
 		for (unsigned int i=0; i<touchPoints.size(); i++) { // touch points
 			float cursorX = (touchPoints[i].x - xMin) / (xMax - xMin);
 			float cursorY = 1 - (touchPoints[i].y - yMin)/(yMax - yMin);
-			printf("Touch found at %f, %f\n", cursorX, cursorY);
-			TuioCursor* cursor = tuio->getClosestTuioCursor(cursorX,cursorY);
-			// TODO improve tracking (don't move cursors away, that might be closer to another touch point)
-			if (cursor == NULL || cursor->getTuioTime() == time) {
-				tuio->addTuioCursor(cursorX,cursorY);
-				printf("Adding cursor\n");
-			} else {
-				tuio->updateTuioCursor(cursor, cursorX, cursorY);
-			}
-		}
+			//printf("Touch found at %f, %f\n", cursorX, cursorY);
+			// TuioCursor* cursor = tuio->getClosestTuioCursor(cursorX,cursorY);
+			kt::point point_msg;
+			point_msg.x = cursorX;
+			point_msg.y = cursorY;
+			list_msg.cursors.push_back(point_msg);
+		//	ROS_INFO("%f %f", msg.cursorX, msg.cursorY);
 
-		tuio->stopUntouchedMovingCursors();
-		tuio->removeUntouchedStoppedCursors();
-		tuio->commitFrame();
+			// TODO improve tracking (don't move cursors away, that might be closer to another touch point)
+		// 	if (cursor == NULL || cursor->getTuioTime() == time) {
+		// 		tuio->addTuioCursor(cursorX,cursorY);
+		// 		//printf("Adding cursor\n");
+		// 	} else {
+		// 		tuio->updateTuioCursor(cursor, cursorX, cursorY);
+		// 	}
+		}
+		chatter_pub.publish(list_msg);
+
+		// tuio->stopUntouchedMovingCursors();
+		// tuio->removeUntouchedStoppedCursors();
+		// tuio->commitFrame();
+
 
 
 		// draw debug frame
@@ -296,9 +278,10 @@ int main(int argc, char **argv)
 		imshow(windowName, debug);
 		// imshow("image", rgb);
 // %Tag(RATE_SLEEP)%
-    loop_rate.sleep();
 // %EndTag(RATE_SLEEP)%
     ++count;
+		ros::spinOnce();
+		loop_rate.sleep();
   }
 
 

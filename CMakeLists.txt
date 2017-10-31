@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(kinect_touch)
+project(kt)
 
 file(GLOB OSC
   "src/oscpack/osc/*.h"
@@ -26,8 +26,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
 )
-find_package( OpenCV 2 )
-find_package(Threads REQUIRED)
+find_package( OpenCV 2 REQUIRED )
+find_package( Threads REQUIRED )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -64,6 +64,7 @@ find_package(Threads REQUIRED)
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
+  point.msg
   Cursor.msg
 )
 
@@ -219,10 +220,10 @@ include_directories(
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
-add_executable(kinecttouch src/kinecttouch.cpp ${OSC} ${TUIO})
-target_link_libraries(kinecttouch ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} OpenNI ${catkin_LIBRARIES})
-add_dependencies(kinecttouch kinect_touch_generate_messages_cpp)
+add_executable(kt src/kt.cpp ${OSC} ${TUIO})
+target_link_libraries(kt ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} OpenNI ${catkin_LIBRARIES})
+add_dependencies(kt kt_generate_messages_cpp)
 
 add_executable(listener2 src/listener.cpp)
 target_link_libraries(listener2 ${catkin_LIBRARIES} ${OpenCV_LIBS} )
-add_dependencies(listener2 kinect_touch_generate_messages_cpp)
+add_dependencies(listener2 kt_generate_messages_cpp)
