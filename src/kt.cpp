@@ -11,8 +11,10 @@
 // %EndTag(MSG_HEADER)%
 
 #include <sstream>
+#include <string>
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <map>
 using namespace std;
@@ -21,6 +23,7 @@ using namespace std;
 #include <opencv/highgui.h>
 #include <opencv/cv.h>
 using namespace cv;
+
 
 // openNI
 #include <XnOpenNI.h>
@@ -32,14 +35,6 @@ using namespace xn;
 		printf("%s failed: %s\n", what, xnGetStatusString(rc));		\
 		return rc;							\
 	}
-
-
-// TUIO
-/*
-#include "TuioServer.h"
-using namespace TUIO;
-*/
-// TODO smoothing using kalman filter
 
 //---------------------------------------------------------------------------
 // Globals
@@ -85,12 +80,13 @@ void average(vector<Mat1s>& frames, Mat1s& mean) {
 	acc.convertTo(mean, CV_16SC1);
 }
 
-
 /**
  * This tutorial demonstrates simple sending of messages over the ROS system.
  */
 int main(int argc, char **argv)
 {
+	ros::init(argc, argv, "kt");
+
 	const unsigned int nBackgroundTrain = 30;
 	const unsigned short touchDepthMin = 10;
 	const unsigned short touchDepthMax = 20;
@@ -104,10 +100,10 @@ int main(int argc, char **argv)
 	const Scalar debugColor1(255,0,0);
 	const Scalar debugColor2(255,255,255);
 
-		int xMin = 110;
-		int xMax = 540;
-		int yMin = 260;
-		int yMax = 480;
+	int xMin = 90;
+	int xMax = 490;
+	int yMin = 290;
+	int yMax = 480;
 
 	Mat1s depth(480, 640); // 16 bit depth (in millimeters)
 	Mat1b depth8(480, 640); // 8 bit depth
@@ -123,22 +119,7 @@ int main(int argc, char **argv)
 	Mat1s background(480, 640);
 	vector<Mat1s> buffer(nBackgroundTrain);
 
-// %Tag(INIT)%
-  ros::init(argc, argv, "kt");
-// %EndTag(INIT)%
-
 	initOpenNI("/home/jonathan/catkin_ws/src/kinect_touch/src/niConfig.xml");
-
-// TUIO server object
-
-	/*TuioServer* tuio;
-	if (localClientMode) {
-		tuio = new TUIO::TuioServer();
-	} else {
-		tuio = new TuioServer("127.0.0.1",3333,false);
-	}
-	TuioTime time;*/
-
 
 	// create some sliders
 	namedWindow(windowName);
@@ -177,26 +158,15 @@ int main(int argc, char **argv)
    * buffer up before throwing some away.
    */
 // %Tag(PUBLISHER)%
-  ros::Publisher chatter_pub = n.advertise<kt::Cursor>("chatter", 1000);
+  ros::Publisher chatter_pub = n.advertise<kt::Cursor>("kinect_touch", 1000);
 // %EndTag(PUBLISHER)%
 
 // %Tag(LOOP_RATE)%
   ros::Rate loop_rate(10);
 // %EndTag(LOOP_RATE)%
 
-  /**
-   * A count of how many messages we have sent. This is used to create
-   * a unique string for each message.
-   */
-// %Tag(ROS_OK)%
-  int count = 0;
   while (ros::ok())
   {
-// %EndTag(ROS_OK)%
-    /**
-     * This is a message object. You stuff it with data, and then publish it.
-     */
-
 	// read available data
 		xnContext.WaitAndUpdateAll();
 
@@ -232,11 +202,6 @@ int main(int argc, char **argv)
 			}
 		}
 
-		// send TUIO cursors
-
-		// time = TuioTime::getSessionTime();
-		// tuio->initFrame(time);
-
     kt::Cursor list_msg;
 		for (unsigned int i=0; i<touchPoints.size(); i++) { // touch points
 			float cursorX = (touchPoints[i].x - xMin) / (xMax - xMin);
@@ -249,21 +214,8 @@ int main(int argc, char **argv)
 			list_msg.cursors.push_back(point_msg);
 		//	ROS_INFO("%f %f", msg.cursorX, msg.cursorY);
 
-			// TODO improve tracking (don't move cursors away, that might be closer to another touch point)
-		// 	if (cursor == NULL || cursor->getTuioTime() == time) {
-		// 		tuio->addTuioCursor(cursorX,cursorY);
-		// 		//printf("Adding cursor\n");
-		// 	} else {
-		// 		tuio->updateTuioCursor(cursor, cursorX, cursorY);
-		// 	}
 		}
 		chatter_pub.publish(list_msg);
-
-		// tuio->stopUntouchedMovingCursors();
-		// tuio->removeUntouchedStoppedCursors();
-		// tuio->commitFrame();
-
-
 
 		// draw debug frame
 		depth.convertTo(depth8, CV_8U, 255 / debugFrameMaxDepth); // render depth to debug frame
@@ -277,9 +229,6 @@ int main(int argc, char **argv)
 		// render debug frame (with sliders)
 		imshow(windowName, debug);
 		// imshow("image", rgb);
-// %Tag(RATE_SLEEP)%
-// %EndTag(RATE_SLEEP)%
-    ++count;
 		ros::spinOnce();
 		loop_rate.sleep();
   }
@@ -287,4 +236,3 @@ int main(int argc, char **argv)
 
   return 0;
 }
-// %EndTag(FULLTEXT)%
