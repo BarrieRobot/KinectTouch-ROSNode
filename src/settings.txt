@@ -1,2 +1,4 @@
-minx: 0
-maxx: 1
+minx=90
+maxx=490
+miny=290
+maxy=480

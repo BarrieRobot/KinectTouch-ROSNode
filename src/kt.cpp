@@ -80,12 +80,47 @@ void average(vector<Mat1s>& frames, Mat1s& mean) {
 	acc.convertTo(mean, CV_16SC1);
 }
 
+int xMin = 0;
+int xMax = 0;
+int yMin = 0;
+int yMax = 0;
+
+void parse_setting (string str) {
+	int i;
+	string delimiter = "=";
+	string token = str.substr(0, str.find(delimiter));
+	str.erase(0, str.find(delimiter) + delimiter.length());
+	std::istringstream(str) >> i;
+	if (token.compare("minx") == 0) {
+		xMin = i;
+	} else if (token.compare("maxx") == 0) {
+		xMax = i;
+	} else if (token.compare("miny") == 0) {
+		yMin = i;
+	} else if (token.compare("maxy") == 0) {
+		yMax = i;
+	}
+}
+
 /**
  * This tutorial demonstrates simple sending of messages over the ROS system.
  */
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "kt");
+
+	std::ifstream file("/home/jonathan/catkin_ws/src/kt/src/settings.txt");
+  std::string str;
+  while (std::getline(file, str))
+  {
+		parse_setting(str);
+  }
+	file.close();
+
+	ROS_INFO("MinX=%d", xMin);
+	ROS_INFO("MaxX=%d", xMax);
+	ROS_INFO("MinY=%d", yMin);
+	ROS_INFO("MaxY=%d", yMax);
 
 	const unsigned int nBackgroundTrain = 30;
 	const unsigned short touchDepthMin = 10;
@@ -99,11 +134,6 @@ int main(int argc, char **argv)
 	const Scalar debugColor0(0,0,128);
 	const Scalar debugColor1(255,0,0);
 	const Scalar debugColor2(255,255,255);
-
-	int xMin = 90;
-	int xMax = 490;
-	int yMin = 290;
-	int yMax = 480;
 
 	Mat1s depth(480, 640); // 16 bit depth (in millimeters)
 	Mat1b depth8(480, 640); // 8 bit depth
