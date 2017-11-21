@@ -8,6 +8,7 @@
 // %Tag(MSG_HEADER)%
 #include "std_msgs/String.h"
 #include "kt/Cursor.h"
+#include "kt/Reset.h"
 // %EndTag(MSG_HEADER)%
 
 #include <sstream>
@@ -102,6 +103,32 @@ void parse_setting (string str) {
 	}
 }
 
+Mat1s depth(480, 640); // 16 bit depth (in millimeters)
+const unsigned int nBackgroundTrain = 30;
+const unsigned short touchDepthMin = 20;
+const unsigned short touchDepthMax = 40;
+const unsigned int touchMinArea = 50;
+Mat1b depth8(480, 640); // 8 bit depth
+Mat3b rgb(480, 640); // 8 bit depth
+Mat3b debug(480, 640); // debug visualization
+Mat1s foreground(640, 480);
+Mat1b foreground8(640, 480);
+Mat1b touch(640, 480); // touch mask
+Mat1s background(480, 640);
+vector<Mat1s> buffer(nBackgroundTrain);
+
+bool reset_bg(kt::Reset::Request  &req, kt::Reset::Response &res)
+{
+  ROS_INFO("I heard I need to reset");
+	for (unsigned int i=0; i<nBackgroundTrain; i++) {
+		xnContext.WaitAndUpdateAll();
+		depth.data = (uchar*) xnDepthGenerator.GetDepthMap();
+		buffer[i] = depth;
+	}
+	average(buffer, background);
+	return true;
+}
+
 /**
  * This tutorial demonstrates simple sending of messages over the ROS system.
  */
@@ -122,11 +149,6 @@ int main(int argc, char **argv)
 	ROS_INFO("MinY=%d", yMin);
 	ROS_INFO("MaxY=%d", yMax);
 
-	const unsigned int nBackgroundTrain = 30;
-	const unsigned short touchDepthMin = 10;
-	const unsigned short touchDepthMax = 20;
-	const unsigned int touchMinArea = 50;
-
 	const bool localClientMode = true; 					// connect to a local client
 
 	const double debugFrameMaxDepth = 4000; // maximal distance (in millimeters) for 8 bit debug depth frame quantization
@@ -134,20 +156,6 @@ int main(int argc, char **argv)
 	const Scalar debugColor0(0,0,128);
 	const Scalar debugColor1(255,0,0);
 	const Scalar debugColor2(255,255,255);
-
-	Mat1s depth(480, 640); // 16 bit depth (in millimeters)
-	Mat1b depth8(480, 640); // 8 bit depth
-	Mat3b rgb(480, 640); // 8 bit depth
-
-	Mat3b debug(480, 640); // debug visualization
-
-	Mat1s foreground(640, 480);
-	Mat1b foreground8(640, 480);
-
-	Mat1b touch(640, 480); // touch mask
-
-	Mat1s background(480, 640);
-	vector<Mat1s> buffer(nBackgroundTrain);
 
 	initOpenNI("/home/jonathan/catkin_ws/src/kinect_touch/src/niConfig.xml");
 
@@ -166,31 +174,9 @@ int main(int argc, char **argv)
 	}
 	average(buffer, background);
 
-// %Tag(NODEHANDLE)%
   ros::NodeHandle n;
-// %EndTag(NODEHANDLE)%
-
-  /**
-   * The advertise() function is how you tell ROS that you want to
-   * publish on a given topic name. This invokes a call to the ROS
-   * master node, which keeps a registry of who is publishing and who
-   * is subscribing. After this advertise() call is made, the master
-   * node will notify anyone who is trying to subscribe to this topic name,
-   * and they will in turn negotiate a peer-to-peer connection with this
-   * node.  advertise() returns a Publisher object which allows you to
-   * publish messages on that topic through a call to publish().  Once
-   * all copies of the returned Publisher object are destroyed, the topic
-   * will be automatically unadvertised.
-   *
-   * The second parameter to advertise() is the size of the message queue
-   * used for publishing messages.  If messages are published more quickly
-   * than we can send them, the number here specifies how many messages to
-   * buffer up before throwing some away.
-   */
-// %Tag(PUBLISHER)%
-  ros::Publisher chatter_pub = n.advertise<kt::Cursor>("kinect_touch", 1000);
-// %EndTag(PUBLISHER)%
-
+	ros::Publisher pub = n.advertise<kt::Cursor>("kinect_touch", 1000);
+  ros::ServiceServer service = n.advertiseService("reset_bg", reset_bg);
 // %Tag(LOOP_RATE)%
   ros::Rate loop_rate(10);
 // %EndTag(LOOP_RATE)%
@@ -245,7 +231,7 @@ int main(int argc, char **argv)
 		//	ROS_INFO("%f %f", msg.cursorX, msg.cursorY);
 
 		}
-		chatter_pub.publish(list_msg);
+		pub.publish(list_msg);
 
 		// draw debug frame
 		depth.convertTo(depth8, CV_8U, 255 / debugFrameMaxDepth); // render depth to debug frame
