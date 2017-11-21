@@ -69,11 +69,11 @@ add_message_files(
 )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  Reset.srv
+  # Service2.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -118,8 +118,8 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-CATKIN_DEPENDS message_runtime
-#  INCLUDE_DIRS include
+CATKIN_DEPENDS roscpp message_runtime
+ # INCLUDE_DIRS include
 #  LIBRARIES kinect_touch
 #  CATKIN_DEPENDS roscpp std_msgs
 #  DEPENDS system_lib
@@ -139,7 +139,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
+## Declare a C++st library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/kinect_touch.cpp
 # )
@@ -218,11 +218,11 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-include_directories(include ${catkin_INCLUDE_DIRS})
+# include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_executable(kt src/kt.cpp ${OSC} ${TUIO})
 target_link_libraries(kt ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} OpenNI ${catkin_LIBRARIES})
-add_dependencies(kt kt_generate_messages_cpp)
+#add_dependencies(kt kt_generate_messages_cpp)
 
 add_executable(listener2 src/listener.cpp)
 target_link_libraries(listener2 ${catkin_LIBRARIES} ${OpenCV_LIBS} )
