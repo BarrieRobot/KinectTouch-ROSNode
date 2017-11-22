@@ -104,9 +104,9 @@ void parse_setting (string str) {
 }
 
 Mat1s depth(480, 640); // 16 bit depth (in millimeters)
-const unsigned int nBackgroundTrain = 30;
-const unsigned short touchDepthMin = 20;
-const unsigned short touchDepthMax = 40;
+const unsigned int nBackgroundTrain = 30;// How long is the background trained? (frames used in calculation)
+const unsigned short touchDepthMin = 15; // How far from the surface a touch needs to be (higher -> touching is not registered + less noise, lower -> more noise)
+const unsigned short touchDepthMax = 40; // How far from the surface a touch can be (higher -> touch in air is registered)
 const unsigned int touchMinArea = 50;
 Mat1b depth8(480, 640); // 8 bit depth
 Mat3b rgb(480, 640); // 8 bit depth
