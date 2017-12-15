@@ -223,7 +223,3 @@ include_directories(
 add_executable(kt src/kt.cpp ${OSC} ${TUIO})
 target_link_libraries(kt ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} OpenNI ${catkin_LIBRARIES})
 #add_dependencies(kt kt_generate_messages_cpp)
-
-add_executable(listener2 src/listener.cpp)
-target_link_libraries(listener2 ${catkin_LIBRARIES} ${OpenCV_LIBS} )
-add_dependencies(listener2 kt_generate_messages_cpp)

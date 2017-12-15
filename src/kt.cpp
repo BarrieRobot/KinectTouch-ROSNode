@@ -85,6 +85,7 @@ int xMin = 0;
 int xMax = 0;
 int yMin = 0;
 int yMax = 0;
+int slope = 0;
 
 void parse_setting (string str) {
 	int i;
@@ -100,13 +101,15 @@ void parse_setting (string str) {
 		yMin = i;
 	} else if (token.compare("maxy") == 0) {
 		yMax = i;
+	} else if (token.compare("slope") == 0) {
+		slope = i;
 	}
 }
 
 Mat1s depth(480, 640); // 16 bit depth (in millimeters)
 const unsigned int nBackgroundTrain = 30;// How long is the background trained? (frames used in calculation)
 const unsigned short touchDepthMin = 15; // How far from the surface a touch needs to be (higher -> touching is not registered + less noise, lower -> more noise)
-const unsigned short touchDepthMax = 40; // How far from the surface a touch can be (higher -> touch in air is registered)
+const unsigned short touchDepthMax = 30; // How far from the surface a touch can be (higher -> touch in air is registered)
 const unsigned int touchMinArea = 50;
 Mat1b depth8(480, 640); // 8 bit depth
 Mat3b rgb(480, 640); // 8 bit depth
@@ -148,6 +151,7 @@ int main(int argc, char **argv)
 	ROS_INFO("MaxX=%d", xMax);
 	ROS_INFO("MinY=%d", yMin);
 	ROS_INFO("MaxY=%d", yMax);
+	ROS_INFO("Slope=%d", slope);
 
 	const bool localClientMode = true; 					// connect to a local client
 
@@ -165,6 +169,7 @@ int main(int argc, char **argv)
 	createTrackbar("xMax", windowName, &xMax, 640);
 	createTrackbar("yMin", windowName, &yMin, 480);
 	createTrackbar("yMax", windowName, &yMax, 480);
+	createTrackbar("slope", windowName, &slope, 320);
 
 	// create background model (average depth)
 	for (unsigned int i=0; i<nBackgroundTrain; i++) {
@@ -204,26 +209,49 @@ int main(int argc, char **argv)
 		Rect roi(xMin, yMin, xMax - xMin, yMax - yMin);
 		Mat touchRoi = touch(roi);
 
+		// Create trapezoid
+		Point rightttop(xMax-slope,yMin);
+		Point rightbot(xMax,yMax);
+		Point leftbot(xMin,yMax);
+		Point lefttop(xMin+slope,yMin);
+		vector< vector<Point> >  trapezoid;
+		trapezoid.push_back(vector<Point>());
+		trapezoid[0].push_back(rightttop);
+		trapezoid[0].push_back(rightbot);
+		trapezoid[0].push_back(leftbot);
+		trapezoid[0].push_back(lefttop);
+
 		// find touch points
 		vector< vector<Point2i> > contours;
 		vector<Point2f> touchPoints;
 		findContours(touchRoi, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE, Point2i(xMin, yMin));
+		float fslope = slope; // slope as float for calc
+		float slopePerPix = fslope / (yMax-yMin);
 		for (unsigned int i=0; i<contours.size(); i++) {
 			Mat contourMat(contours[i]);
 			// find touch points by area thresholding
 			if ( contourArea(contourMat) > touchMinArea ) {
 				Scalar center = mean(contourMat);
-				Point2i touchPoint(center[0], center[1]);
-				touchPoints.push_back(touchPoint);
+        float touchx = center[0] - xMin;
+        float touchy = center[1] - yMin;
+        float slopedAtCurrY = ((yMax-yMin) - touchy) * slopePerPix;
+
+				if (touchx < (xMax-xMin-slopedAtCurrY) && touchx > slopedAtCurrY) {
+					// Touch is inside trapezoid
+					Point2f touchPoint(touchx, touchy);
+					touchPoints.push_back(touchPoint);
+				}
 			}
 		}
 
     kt::Cursor list_msg;
 		for (unsigned int i=0; i<touchPoints.size(); i++) { // touch points
-			float cursorX = (touchPoints[i].x - xMin) / (xMax - xMin);
-			float cursorY = 1 - (touchPoints[i].y - yMin)/(yMax - yMin);
+			float slopedAtCurrHeight = ((yMax-yMin) - touchPoints[i].y) * slopePerPix;
+
+			float cursorX = (touchPoints[i].x - slopedAtCurrHeight) / (xMax - xMin - 2 * slopedAtCurrHeight);
+			float cursorY = 1 - (touchPoints[i].y) / (yMax - yMin);
 			//printf("Touch found at %f, %f\n", cursorX, cursorY);
-			// TuioCursor* cursor = tuio->getClosestTuioCursor(cursorX,cursorY);
+
 			kt::point point_msg;
 			point_msg.x = cursorX;
 			point_msg.y = cursorY;
@@ -237,7 +265,7 @@ int main(int argc, char **argv)
 		depth.convertTo(depth8, CV_8U, 255 / debugFrameMaxDepth); // render depth to debug frame
 		cvtColor(depth8, debug, CV_GRAY2BGR);
 		debug.setTo(debugColor0, touch);  // touch mask
-		rectangle(debug, roi, debugColor1, 2); // surface boundaries
+		polylines(debug, trapezoid, true, debugColor1, 3); // surface boundaries
 		for (unsigned int i=0; i<touchPoints.size(); i++) { // touch points
 			circle(debug, touchPoints[i], 5, debugColor2, CV_FILLED);
 		}
@@ -248,7 +276,6 @@ int main(int argc, char **argv)
 		ros::spinOnce();
 		loop_rate.sleep();
   }
-
 
   return 0;
 }

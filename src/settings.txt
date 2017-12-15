@@ -1,4 +1,5 @@
-minx=90
-maxx=490
-miny=290
-maxy=480
+minx=58
+maxx=611
+miny=149
+maxy=331
+slope=98
