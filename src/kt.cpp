@@ -46,8 +46,6 @@ xn::Context xnContext;
 xn::DepthGenerator xnDepthGenerator;
 xn::ImageGenerator xnImgeGenertor;
 
-bool mousePressed = false;
-
 int initOpenNI(const XnChar* fname) {
 	XnStatus nRetVal = XN_STATUS_OK;
 	ScriptNode scriptNode;
@@ -164,12 +162,12 @@ int main(int argc, char **argv)
 	initOpenNI("/home/jonathan/catkin_ws/src/kinect_touch/src/niConfig.xml");
 
 	// create some sliders
-	namedWindow(windowName);
+	/*namedWindow(windowName);
 	createTrackbar("xMin", windowName, &xMin, 640);
 	createTrackbar("xMax", windowName, &xMax, 640);
 	createTrackbar("yMin", windowName, &yMin, 480);
 	createTrackbar("yMax", windowName, &yMax, 480);
-	createTrackbar("slope", windowName, &slope, 320);
+	createTrackbar("slope", windowName, &slope, 320);*/
 
 	// create background model (average depth)
 	for (unsigned int i=0; i<nBackgroundTrain; i++) {
@@ -256,22 +254,22 @@ int main(int argc, char **argv)
 			point_msg.x = cursorX;
 			point_msg.y = cursorY;
 			list_msg.cursors.push_back(point_msg);
-		//	ROS_INFO("%f %f", msg.cursorX, msg.cursorY);
+			ROS_INFO("%f %f", cursorX, cursorY);
 
 		}
 		pub.publish(list_msg);
 
 		// draw debug frame
-		depth.convertTo(depth8, CV_8U, 255 / debugFrameMaxDepth); // render depth to debug frame
+		/*depth.convertTo(depth8, CV_8U, 255 / debugFrameMaxDepth); // render depth to debug frame
 		cvtColor(depth8, debug, CV_GRAY2BGR);
 		debug.setTo(debugColor0, touch);  // touch mask
 		polylines(debug, trapezoid, true, debugColor1, 3); // surface boundaries
 		for (unsigned int i=0; i<touchPoints.size(); i++) { // touch points
 			circle(debug, touchPoints[i], 5, debugColor2, CV_FILLED);
 		}
-
+*/
 		// render debug frame (with sliders)
-		imshow(windowName, debug);
+		// imshow(windowName, debug);
 		// imshow("image", rgb);
 		ros::spinOnce();
 		loop_rate.sleep();
